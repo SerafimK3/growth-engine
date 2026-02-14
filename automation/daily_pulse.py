@@ -43,11 +43,9 @@ event_types = ['dashboard_viewed', 'report_created', 'paywall_viewed', 'settings
 for _ in range(150):
     user = random.choice(users)
     event = random.choice(event_types)
-    
     # Precise timing within the last 24h
     random_seconds = random.randint(0, 86400)
     event_time = end_time - timedelta(seconds=random_seconds)
-    
     ph_client.capture(
         distinct_id=user,  # Explicitly name the ID
         event=event,       # Explicitly name the event
