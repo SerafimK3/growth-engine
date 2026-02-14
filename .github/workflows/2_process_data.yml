@@ -1,0 +1,26 @@
+name: 2. Process Data (09:30)
+
+on:
+  schedule:
+    - cron: '30 9 * * *' # 09:30 UTC
+  workflow_dispatch:
+
+jobs:
+  run_dbt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install dbt-postgres
+      
+    
+      - name: Run dbt models
+        env:
+          DBT_HOST: ${{ secrets.DBT_HOST }}
+          DBT_USER: ${{ secrets.DBT_USER }}
+          DBT_PASSWORD: ${{ secrets.DBT_PASSWORD }}
+          DBT_DB: postgres
+          DBT_SCHEMA: dbt_serafim
+        run: dbt run --project-dir growth_engine --profiles-dir .
