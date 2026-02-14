@@ -7,7 +7,7 @@ growth_engine: # This MUST match the profile name in your dbt_project.yml
       host: "{{ env_var('DBT_HOST') }}"
       user: "{{ env_var('DBT_USER') }}"
       pass: "{{ env_var('DBT_PASSWORD') }}"
-      port: 5432 # (Or 6543 if you are using the Transaction Pooler)
+      port: 6543 # (Or 6543 if you are using the Transaction Pooler)
       dbname: postgres
       schema: dbt_serafim
       threads: 4
