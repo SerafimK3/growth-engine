@@ -49,8 +49,8 @@ for _ in range(150):
     event_time = end_time - timedelta(seconds=random_seconds)
     
     ph_client.capture(
-        user, 
-        event, 
+        distinct_id=user,  # Explicitly name the ID
+        event=event,       # Explicitly name the event
         timestamp=event_time,
         properties={"source": "stk_automation_bot"}
     )
@@ -66,9 +66,9 @@ for _ in range(new_signups):
     signup_seconds = random.randint(0, 86400)
     signup_time = end_time - timedelta(seconds=signup_seconds)
     
-    ph_client.capture(
-        new_user_id, 
-        "user_signed_up", 
+   ph_client.capture(
+        distinct_id=new_user_id, 
+        event="user_signed_up", 
         timestamp=signup_time,
         properties={"plan": "free", "source": "organic"}
     )
