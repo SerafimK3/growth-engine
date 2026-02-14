@@ -1,110 +1,78 @@
 import os
 import random
 import uuid
+import sys
 from datetime import datetime, timedelta
 from posthog import Posthog
 
-# 1. SETUP
+# 1. ROBUST SETUP (The "Loud" Part)
+api_key = os.environ.get("POSTHOG_API_KEY")
+
+if not api_key:
+    print("CRITICAL ERROR: POSTHOG_API_KEY is missing from environment variables.")
+    sys.exit(1) # Fail the GitHub Action immediately
+
+# Print masked key to verify it's reading the right secret
+print(f"Loaded API Key: {api_key[:4]}...{api_key[-4:]}")
+
 posthog = Posthog(
-    project_api_key=os.environ.get("POSTHOG_API_KEY"), 
-    host='https://eu.i.posthog.com' 
+    project_api_key=api_key, 
+    host='https://eu.i.posthog.com' # Confirmed EU Host
 )
 
-DAILY_NEW_USERS = random.randint(5, 12)  # 5-12 new people join today
-TOTAL_ACTIVE_BASE = 150 # We simulate a pool of ~150 returning users
-CONVERSION_RATE_DAILY = 0.02 # 2% chance a free user buys today
+# 2. PRECISE TIME WINDOW (The "Sync Logic")
+# We want data from [Now - 24h] to [Now]
+end_time = datetime.utcnow()
+start_time = end_time - timedelta(hours=24)
 
-now = datetime.utcnow()
-yesterday = now - timedelta(days=1)
-print(f"Simulating Universe for {yesterday.date()}...")
+print(f"⏳ Generating events for window: {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}")
 
-# --- HELPER FUNCTIONS ---
+# --- THE SIMULATION ENGINE ---
 
-def get_random_timestamp():
-    """Returns a random second within the 'yesterday' window"""
-    seconds = random.randint(0, 86400)
-    return yesterday - timedelta(seconds=seconds)
+# 1. Existing Users (Retention)
+users = [f"user_stk_{i}" for i in range(1, 50)] 
+event_types = ['dashboard_viewed', 'report_created', 'paywall_viewed', 'settings_opened']
 
-def generate_event(user_id, event, props={}):
-    """Captures event to PostHog"""
+for _ in range(150):
+    user = random.choice(users)
+    event = random.choice(event_types)
+    
+    # Logic: Pick a random second within the last 86400 seconds (24 hours)
+    random_seconds = random.randint(0, 86400)
+    event_time = end_time - timedelta(seconds=random_seconds)
+    
     posthog.capture(
-        user_id, 
+        user, 
         event, 
-        timestamp=get_random_timestamp(),
-        properties=props
+        timestamp=event_time,
+        properties={"source": "stk_automation_bot"}
     )
 
-# --- THE LOGIC ENGINE ---
+# 2. New Signups (Growth)
+new_signups = random.randint(3, 8)
+print(f"Creating {new_signups} new users...")
 
-# 1. GENERATE NEW SIGNUPS (The "Fresh Blood")
-# They join, maybe onboard, maybe bounce.
-for i in range(DAILY_NEW_USERS):
-    user_id = f"user_{yesterday.strftime('%Y%m%d')}_{str(uuid.uuid4())[:4]}_free"
+for _ in range(new_signups):
+    new_user_id = f"user_{end_time.strftime('%Y%m%d')}_{str(uuid.uuid4())[:4]}"
     
-    # Event A: Signup (Guaranteed)
-    generate_event(user_id, "user_signed_up", {"plan": "free", "source": "ads"})
+    # Signup happens sometime in the last 24h
+    signup_seconds = random.randint(0, 86400)
+    signup_time = end_time - timedelta(seconds=signup_seconds)
     
-    # Event B: Onboarding (80% chance)
-    if random.random() < 0.8:
-        generate_event(user_id, "onboarding_completed", {"time_taken": random.randint(60, 300)})
-        
-        # Event C: First Value (50% chance)
-        if random.random() < 0.5:
-             generate_event(user_id, "dashboard_created", {"widgets": 3})
+    posthog.capture(
+        new_user_id, 
+        "user_signed_up", 
+        timestamp=signup_time,
+        properties={"plan": "free", "source": "organic"}
+    )
 
-    print(f"New User Born: {user_id}")
+print(f"Queued {150 + new_signups} events. Sending to PostHog...")
 
-# 2. SIMULATE RETURNING USERS (The "Existing Population")
-# We generate IDs that look like they joined in the past 60 days.
-# We "decode" their ID to decide how they act today.
-
-for i in range(TOTAL_ACTIVE_BASE):
-    # a. Create a fake "History"
-    days_ago = random.randint(1, 60)
-    join_date = (yesterday - timedelta(days=days_ago)).strftime('%Y%m%d')
-    
-    # b. Assign a Persona (Weighted Probability)
-    # 10% are Pro, 90% are Free
-    is_pro = random.random() < 0.1
-    plan_status = "pro" if is_pro else "free"
-    
-    user_id = f"user_{join_date}_{i}_{plan_status}"
-
-    # c. DECISION: Does this user log in today? (Retention Curve)
-    # New users (joined < 7 days ago) login 60% of the time
-    # Old users (joined > 30 days ago) login 20% of the time
-    login_prob = 0.6 if days_ago < 7 else 0.2
-    
-    if random.random() > login_prob:
-        continue # They churned for today (No simulation)
-
-    # d. ACTIVITY LOOP
-    # If they logged in, they do 3-10 things
-    num_actions = random.randint(3, 10)
-    
-    for _ in range(num_actions):
-        # LOGIC: Pro users use advanced features, Free users hit paywalls
-        if is_pro:
-            possible_events = ['report_export_pdf', 'advanced_filter', 'team_invite', 'dashboard_viewed']
-            event = random.choice(possible_events)
-            generate_event(user_id, event, {"plan": "pro"})
-        else:
-            # Free User Logic
-            possible_events = ['dashboard_viewed', 'settings_viewed', 'basic_filter']
-            
-            # 10% chance to hit paywall
-            if random.random() < 0.1:
-                event = "paywall_viewed"
-                generate_event(user_id, event, {"trigger": "feature_lock"})
-                
-                # e. THE CONVERSION EVENT (Rare!)
-                # If they hit the paywall, small chance they buy RIGHT NOW
-                if random.random() < CONVERSION_RATE_DAILY:
-                    generate_event(user_id, "subscription_started", {"mrr": 29, "plan": "pro"})
-                    print(f"KA-CHING! User {user_id} just subscribed!")
-                    break # Stop generating events, they are busy paying
-            else:
-                event = random.choice(possible_events)
-                generate_event(user_id, event, {"plan": "free"})
-
-print(f"Universe Simulation Complete. Data sent to PostHog.")
+# 3. FORCE SEND (The Fix)
+# This forces the script to wait until data is actually sent.
+try:
+    posthog.flush()
+    print("Data sent successfully!")
+except Exception as e:
+    print(f"FAILED to send data: {e}")
+    sys.exit(1) # Fail the action so you see a Red X in GitHub
