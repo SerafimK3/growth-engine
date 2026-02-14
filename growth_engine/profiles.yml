@@ -1,0 +1,13 @@
+# profiles.yml
+default: # This MUST match the profile name in your dbt_project.yml
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST') }}"
+      user: "{{ env_var('DBT_USER') }}"
+      pass: "{{ env_var('DBT_PASSWORD') }}"
+      port: 5432 # (Or 6543 if you are using the Transaction Pooler)
+      dbname: postgres
+      schema: dbt_serafim
+      threads: 4
