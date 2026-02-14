@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: posthog
+    database: postgres
+    schema: posthog_exports # This matches your Supabase schema
+    tables:
+      - name: events
+      - name: persons

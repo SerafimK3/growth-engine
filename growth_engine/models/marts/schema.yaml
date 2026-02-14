@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: fct_conversions
+    description: "The primary funnel and revenue table for growth analysis."
+    columns:
+      - name: user_id
+        tests:
+          - unique
+          - not_null
