@@ -64,7 +64,7 @@ for _ in range(new_signups):
     signup_seconds = random.randint(0, 86400)
     signup_time = end_time - timedelta(seconds=signup_seconds)
     
-   ph_client.capture(
+    ph_client.capture(
         distinct_id=new_user_id, 
         event="user_signed_up", 
         timestamp=signup_time,
