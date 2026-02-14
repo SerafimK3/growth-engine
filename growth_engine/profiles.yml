@@ -1,5 +1,5 @@
 # profiles.yml
-default: # This MUST match the profile name in your dbt_project.yml
+growth_engine: # This MUST match the profile name in your dbt_project.yml
   target: dev
   outputs:
     dev:
